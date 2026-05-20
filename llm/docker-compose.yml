@@ -1,0 +1,43 @@
+services:
+  llama-cpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: llama-cpp
+    devices:
+      - nvidia.com/gpu=all
+    volumes:
+      - /home/johnhidalgo/models:/models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: >
+      -m /models/text/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+      --host 0.0.0.0
+      --port 8080
+      --ctx-size 32768
+      --n-gpu-layers 999
+      --cache-reuse 512
+      --jinja
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  scene-planner-api:
+    build: ../services/fastapi-llm
+    container_name: scene-planner-api
+    ports:
+      - "8000:8000"
+    environment:
+      - LLAMA_HOST=llama-cpp
+      - LLAMA_PORT=8080
+    depends_on:
+      llama-cpp:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ../services/fastapi-llm/prompts:/app/prompts
+
+networks:
+  default:
+    name: ai-infrastructure

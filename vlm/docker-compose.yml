@@ -1,0 +1,32 @@
+services:
+  qwen2-5-vl:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: qwen2-5-vl
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /home/johnhidalgo/models/vision/qwen2.5-vl-7b:/models:ro
+    devices:
+      - nvidia.com/gpu=all
+    environment:
+      - LLAMA_ARG_MODEL=/models/Qwen2.5-VL-7B-Instruct-q4_k_m.gguf
+      - LLAMA_ARG_MMPROJ=/models/Qwen2.5-VL-7B-Instruct-mmproj-f16.gguf
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=8080
+      - LLAMA_ARG_CTX_SIZE=8192
+      - LLAMA_ARG_N_GPU_LAYERS=10
+      - LLAMA_ARG_MMPROJ_OFFLOAD=false
+      - LLAMA_ARG_TIMEOUT=1800
+
+  fastapi-vlm:
+    build:
+      context: ../services/fastapi-vlm
+    container_name: fastapi-vlm
+    restart: unless-stopped
+    ports:
+      - "8082:8000"
+    environment:
+      - VLM_URL=http://qwen2-5-vl:8080
+    depends_on:
+      - qwen2-5-vl
